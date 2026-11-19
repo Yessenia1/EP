@@ -12,12 +12,7 @@ foreach ($d in @("$env:LOCALAPPDATA\Docker\run", "$env:LOCALAPPDATA\docker-secre
         New-Item -ItemType Directory $d | Out-Null
     }
 }
-$dockerExe = if (Test-Path "$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe") {
-    "$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe"
-} else {
-    "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-}
-Start-Process $dockerExe
+Start-Process "$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe"
 for ($i = 0; $i -lt 40; $i++) {
     Start-Sleep -Seconds 5
     docker info --format '{{.ServerVersion}}' 2>$null | Out-Null

@@ -1,6 +1,0 @@
-Modo: distribuido | lotes FEFO usados: L-2105 (stock 20.0), L-1180 (stock 300.0), L-0444 (stock 450.0), L-3310 (stock 34.0), L-7713 (stock 400.0), L-0932 (stock 60.0)
-Usuarios concurrentes: 50 | ventas: 50 | exitosas: 50 | errores: 0
-Duración total: 1.46 s | rendimiento: 34.3 ventas/s
-Latencia (ms): mín 178 | media 813 | p50 784 | p90 1314 | p95 1370 | p99 1439 | máx 1439
-RNF-14 (p95 < 2000 ms con 50 usuarios): CUMPLE
-Stock del lote tras la prueba: L-2105 = 11.0
