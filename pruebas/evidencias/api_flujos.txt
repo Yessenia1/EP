@@ -1,0 +1,30 @@
+=== 1. GET /api/productos/catalogo/1/sucursal/1/fefo  (Paracetamol, Sede Central Juliaca)
+  orden 1 | lote L-2105 | vence 2026-12-28 | dias 40 | stock 79.0
+  orden 2 | lote L-2291 | vence 2027-01-12 | dias 55 | stock 500.0
+
+=== 2. POST /api/ventas con el lote que vence despues (id 10)
+  status 400 | Error al crear venta: Por FEFO debe venderse primero el lote L-2105 (vence el 2026-12-28, stock 79).
+
+=== 3. POST /api/ventas con lote vencido de Puno (id 2)
+  status 400 | Error al crear venta: El lote L-7714 venció el 2026-11-13 y no puede venderse.
+
+=== 4. POST /api/ventas con el lote FEFO (id 8)
+   Venta creada exitosamente | venta 2 B001-2
+
+=== 5. POST /api/reabastecimiento/evaluar?idSucursal=2  (Puno)
+   2 órdenes generadas
+   #4 AMOXICILINA 500MG CAP | stock 18.0 <= minimo 60.0 | sugerido 102.0 | PENDIENTE
+   #5 CETIRIZINA 10MG TAB | stock 0 <= minimo 30.0 | sugerido 150.0 | PENDIENTE
+
+=== 6. GET /api/reabastecimiento/resumen?idSucursal=2
+   {'pendientes': 2, 'aprobadas': 0, 'convertidas': 0, 'productosBajoMinimo': 2}
+
+=== 7. Outbox: eventos generados (tabla cola_eventos)
+ id |         topico         |               titulo               |  estado   
+----+------------------------+------------------------------------+-----------
+  5 | sistema.notificaciones | Orden de reabastecimiento generada | PROCESADO
+  4 | sistema.notificaciones | Orden de reabastecimiento generada | PROCESADO
+  3 | sistema.notificaciones | Orden de reabastecimiento generada | PROCESADO
+  2 | sistema.notificaciones | Orden de reabastecimiento generada | PROCESADO
+(4 rows)
+

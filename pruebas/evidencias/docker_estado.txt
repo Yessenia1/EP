@@ -1,0 +1,35 @@
+PS> docker compose ps
+SERVICE      IMAGE                        STATUS                        PORTS
+backend      salud-total-erp-backend      Up About a minute (healthy)   0.0.0.0:8085->8085/tcp, [::]:8085->8085/tcp
+db           postgres:17-alpine           Up 20 minutes (healthy)       0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+frontend     salud-total-erp-frontend     Up About a minute (healthy)   0.0.0.0:8090->80/tcp, [::]:8090->80/tcp
+mensajeria   salud-total-erp-mensajeria   Up 20 minutes                 0.0.0.0:8087->8087/tcp, [::]:8087->8087/tcp
+
+PS> docker images
+REPOSITORY                    TAG         SIZE
+salud-total-erp-frontend      latest      86.3MB
+salud-total-erp-backend       latest      649MB
+salud-total-erp-mensajeria    latest      475MB
+
+PS> curl http://localhost:8085/actuator/health
+{"status":"UP"}
+
+PS> psql (db): historial de Flyway en la base creada desde cero
+ version |          description          | installed_by |      instalado      | ms  | success 
+---------+-------------------------------+--------------+---------------------+-----+---------
+ 1       | esquema base                  | st_app       | 2026-11-18 21:51:40 | 675 | t
+ 2       | reabastecimiento e integridad | st_app       | 2026-11-18 21:51:40 |  38 | t
+(2 rows)
+
+PS> psql (db): rol de la aplicación y dueño de las tablas
+ rolname  | superusuario | crea_bd 
+----------+--------------+---------
+ postgres | t            | t
+ st_app   | f            | f
+(2 rows)
+
+ tableowner | tablas 
+------------+--------
+ st_app     |     85
+(1 row)
+

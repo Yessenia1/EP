@@ -1,0 +1,6 @@
+Lote FEFO usado: L-2105 (id 8, stock 70.0)
+Usuarios concurrentes: 50 | ventas: 50 | exitosas: 50 | errores: 0
+Duración total: 2.23 s | rendimiento: 22.4 ventas/s
+Latencia (ms): mín 526 | media 1456 | p50 1496 | p90 2109 | p95 2162 | p99 2231 | máx 2231
+RNF-14 (p95 < 2000 ms con 50 usuarios): NO CUMPLE
+Stock del lote tras la prueba: L-2105 = 20.0

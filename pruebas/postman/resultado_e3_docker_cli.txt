@@ -1,0 +1,150 @@
+<claude-code-hint v="1" type="plugin" value="postman@claude-plugins-official" />
+No authorization data found. Please use the `postman login` command.
+Refer:https://learning.postman.com/docs/postman-cli/postman-cli-options/#postman-login
+
+Running your collection...
+postman
+
+E3 · Salud Total · ERP Articulos
+
+Root 01 Health del backend
+
+  GET http://localhost:8085/actuator/health [200 OK, 466 B, 27 ms]
+  Pass  HTTP 200
+  Pass  Estado UP
+
+Root 02 Login con credenciales inválidas
+
+  POST http://localhost:8085/api/auth/login [401 Unauthorized, 614 B, 109 ms]
+  Pass  Rechaza credenciales (401)
+  Pass  Informa intentos restantes
+
+Root 03 Login correcto
+
+  POST http://localhost:8085/api/auth/login [200 OK, 2.95 KB, 116 ms]
+  Pass  HTTP 200
+  Pass  Devuelve JWT
+
+Root 04 Endpoint protegido sin token
+
+  GET http://localhost:8085/api/reabastecimiento?idSucursal=1 [403 Forbidden, 614 B, 46 ms]
+  Pass  Sin token no autoriza (401/403)
+
+Root 05 Lotes FEFO de Paracetamol en Juliaca
+
+  GET http://localhost:8085/api/productos/catalogo/1/sucursal/1/fefo [200 OK, 845 B, 62 ms]
+  Pass  HTTP 200
+  Pass  Hay lotes vigentes
+  Pass  Ordenados por vencimiento
+  Pass  Ningún lote vencido
+  Pass  ordenFefo empieza en 1
+  Pass  Hay al menos dos lotes para probar FEFO
+
+Root 05b Lotes vencidos en Puno
+
+  GET http://localhost:8085/api/productos/sucursal/2/vencidos [200 OK, 2.37 KB, 49 ms]
+  Pass  HTTP 200
+  Pass  Hay un lote vencido de prueba
+
+Root 05c Abrir caja chica
+
+  POST http://localhost:8085/api/caja-chica/cajas [200 OK, 774 B, 103 ms]
+  Pass  Caja abierta o ya existente
+
+Root 05d Crear proveedor
+
+  POST http://localhost:8085/api/proveedores [201 Created, 883 B, 67 ms]
+  Pass  Proveedor creado (2xx)
+
+Root 06 Venta saltándose el lote FEFO
+
+  POST http://localhost:8085/api/ventas [400 Bad Request, 602 B, 112 ms]
+  Pass  Rechaza (400)
+  Pass  Mensaje FEFO
+
+Root 07 Venta de un lote vencido
+
+  POST http://localhost:8085/api/ventas [400 Bad Request, 581 B, 54 ms]
+  Pass  Rechaza (400)
+  Pass  Mensaje de vencimiento
+
+Root 08 Venta del lote que vence primero
+
+  POST http://localhost:8085/api/ventas [201 Created, 2.6 KB, 196 ms]
+  Pass  Venta creada (2xx)
+  Pass  Numeración B001
+
+Root 09 Evaluar punto de reorden en Juliaca
+
+  POST http://localhost:8085/api/reabastecimiento/evaluar?idSucursal=1 [200 OK, 1.71 KB, 79 ms]
+  Pass  HTTP 200
+  Pass  Devuelve lista
+
+Root 10 Segunda evaluación no duplica órdenes abiertas
+
+  POST http://localhost:8085/api/reabastecimiento/evaluar?idSucursal=1 [200 OK, 539 B, 45 ms]
+  Pass  Cero órdenes nuevas
+
+Root 11 Listar órdenes pendientes de Juliaca
+
+  GET http://localhost:8085/api/reabastecimiento?idSucursal=1&estado=PENDIENTE&page=0&size=10 [200 OK, 1.77 KB, 58 ms]
+  Pass  HTTP 200
+  Pass  Paginado (size <= 10)
+  Pass  Solo PENDIENTE
+  Pass  Incluye nombre de producto
+
+Root 12 Aprobar con cantidad inválida
+
+  PUT http://localhost:8085/api/reabastecimiento/3/aprobar [400 Bad Request, 595 B, 45 ms]
+  Pass  Validación (400)
+  Pass  Mensaje del campo
+
+Root 13 Aprobar orden ajustando cantidad
+
+  PUT http://localhost:8085/api/reabastecimiento/3/aprobar [200 OK, 955 B, 41 ms]
+  Pass  HTTP 200
+  Pass  Queda APROBADA
+  Pass  Guarda la cantidad
+
+Root 14 No se puede rechazar una orden ya aprobada
+
+  PUT http://localhost:8085/api/reabastecimiento/3/rechazar [409 Conflict, 577 B, 38 ms]
+  Pass  Conflicto (409)
+
+Root 15 Convertir en orden de compra
+
+  POST http://localhost:8085/api/reabastecimiento/3/convertir [200 OK, 961 B, 66 ms]
+  Pass  HTTP 200
+  Pass  Queda CONVERTIDA
+  Pass  Referencia a la compra
+
+Root 16 Resumen de reabastecimiento
+
+  GET http://localhost:8085/api/reabastecimiento/resumen?idSucursal=1 [200 OK, 603 B, 37 ms]
+  Pass  HTTP 200
+  Pass  Tiene los cuatro indicadores
+Generating run report [json]...
+Saving run report [json]...
+Report created successfully! Saved to: D:\EP\Programa\articulos-e3\pruebas\postman\resultado_e3_docker.json
+
+-----------------------------------------------------------------------
+|                         |            executed |              failed |
+--------------------------+---------------------+----------------------
+|              iterations |                   1 |                   0 |
+--------------------------+---------------------+----------------------
+|                requests |                  19 |                   0 |
+--------------------------+---------------------+----------------------
+|            test-scripts |                  19 |                   0 |
+--------------------------+---------------------+----------------------
+|      prerequest-scripts |                   1 |                   0 |
+--------------------------+---------------------+----------------------
+|              assertions |                  41 |                   0 |
+-----------------------------------------------------------------------
+| total run duration: 2.4 s                                           |
+-----------------------------------------------------------------------
+| total data received: 12.86 KB (approx)                              |
+-----------------------------------------------------------------------
+| average response time: 71 ms [min: 27 ms, max: 196 ms, s.d.: 39 ms] |
+-----------------------------------------------------------------------
+Postman credentials are required for publishing run details to Postman cloud.
+Please specify it by using the `postman login` command
