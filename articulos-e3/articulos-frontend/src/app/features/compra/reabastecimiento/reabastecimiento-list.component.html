@@ -1,0 +1,109 @@
+<app-header></app-header>
+
+<div class="h-full bg-slate-50 dark:bg-slate-900 pt-16 transition-colors duration-300">
+    <app-sidebar></app-sidebar>
+
+    <div [style.padding-left]="(sidebarService.isOpen$ | async) ? '290px' : '20px'"
+        class="p-4 md:p-6 min-w-0 transition-all duration-300 ease-in-out">
+
+        <app-breadcrumb [items]="breadcrumbItems"></app-breadcrumb>
+
+        <div
+            class="w-full bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="mb-6">
+                <app-page-header title="Reabastecimiento automático"
+                    subtitle="Órdenes generadas cuando el stock vigente llega al punto de reorden"
+                    [showCounter]="true" counterLabel="Total" [counterValue]="totalElements()">
+                </app-page-header>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 my-6">
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Productos bajo mínimo</p>
+                        <p class="text-2xl font-bold text-rose-600">{{ resumen().productosBajoMinimo }}</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Pendientes</p>
+                        <p class="text-2xl font-bold text-amber-600">{{ resumen().pendientes }}</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Aprobadas</p>
+                        <p class="text-2xl font-bold text-indigo-600">{{ resumen().aprobadas }}</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Convertidas en compra</p>
+                        <p class="text-2xl font-bold text-emerald-600">{{ resumen().convertidas }}</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button *ngFor="let f of filtros" type="button" (click)="cambiarFiltro(f.value)"
+                        class="px-4 py-1.5 rounded-full text-sm font-medium border transition-colors"
+                        [ngClass]="estadoFiltro() === f.value
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-indigo-400'">
+                        {{ f.label }}
+                    </button>
+                </div>
+
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 my-6">
+                    <div class="flex-1 md:w-80">
+                        <app-search-generic [options]="searchOptions" placeholder="Buscar producto..."
+                            (onSearch)="onSearch($event)">
+                        </app-search-generic>
+                    </div>
+
+                    <app-primary-button [label]="evaluando() ? 'Evaluando...' : 'Evaluar ahora'" icon="search"
+                        color="brand" (btnClick)="evaluarAhora()">
+                    </app-primary-button>
+                </div>
+
+                <div class="overflow-hidden">
+                    <div *ngIf="loading()" class="flex justify-center items-center h-64">
+                        <div class="text-center">
+                            <div
+                                class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400">
+                            </div>
+                            <p class="mt-4 text-slate-600 dark:text-slate-400 font-medium">Cargando...</p>
+                        </div>
+                    </div>
+
+                    <div *ngIf="!loading()">
+                        <app-tabla-general [datos]="ordenes()" [columnas]="columns" [showEdit]="false"
+                            [showDelete]="false" [currentPage]="currentPage()" [pageSize]="pageSize()"
+                            [accionesTemplate]="acciones">
+                        </app-tabla-general>
+
+                        <div *ngIf="totalElements() > 0" class="p-4 border-t border-slate-100 dark:border-slate-700">
+                            <app-pagination [currentPage]="currentPage()" [totalPages]="totalPages()"
+                                [pageSize]="pageSize()" [pageSizeOptions]="[5, 10, 25, 50]"
+                                (pageChange)="cambiarPagina($event)" (pageSizeChange)="cambiarTamanoPagina($event)">
+                            </app-pagination>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<ng-template #acciones let-orden>
+    <ng-container [ngSwitch]="orden.estado">
+        <div *ngSwitchCase="'PENDIENTE'" class="flex gap-2">
+            <button type="button" (click)="aprobar(orden)" title="Aprobar"
+                class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                Aprobar
+            </button>
+            <button type="button" (click)="rechazar(orden)" title="Rechazar"
+                class="px-3 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100">
+                Rechazar
+            </button>
+        </div>
+        <button *ngSwitchCase="'APROBADA'" type="button" (click)="convertir(orden)" title="Generar orden de compra"
+            class="px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+            Generar orden de compra
+        </button>
+        <span *ngSwitchCase="'CONVERTIDA'" class="text-xs text-slate-500">Compra #{{ orden.idCompra }}</span>
+        <span *ngSwitchCase="'RECHAZADA'" class="text-xs text-slate-500" [title]="orden.motivoRechazo">{{ orden.motivoRechazo }}</span>
+        <span *ngSwitchDefault class="text-xs text-slate-400">—</span>
+    </ng-container>
+</ng-template>

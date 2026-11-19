@@ -1,0 +1,91 @@
+name: salud-total-erp
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: clinica_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD}
+      APP_DB_USER: ${DB_USER}
+      APP_DB_PASSWORD: ${DB_PASSWORD}
+      TZ: America/Lima
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d clinica_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./articulos-backend
+    image: salud-total-erp-backend:${APP_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://db:5432/clinica_db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_PRIVATE_KEY_PATH: ${JWT_PRIVATE_KEY_PATH:-classpath:certs/private.pem}
+      JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-classpath:certs/public.pem}
+      MENSAJERIA_API_URL: http://mensajeria:8087
+      VENTAS_FEFO_ESTRICTO: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:8090,http://localhost:4200
+    volumes:
+      - ./secrets:/run/secrets:ro
+      - archivos:/var/laboratorio/archivos
+      - uploads:/app/uploads
+    ports:
+      - "8085:8085"
+
+  mensajeria:
+    build: ./mensajeria-api
+    image: salud-total-erp-mensajeria:${APP_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      JWT_PUBLIC_KEY_LOCATION: ${JWT_PUBLIC_KEY_LOCATION:-classpath:certs/public.pem}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      WHATSAPP_API_URL: ${WHATSAPP_API_URL:-https://graph.facebook.com/v18.0/TU_PHONE_NUMBER_ID/messages}
+      WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN:-sin-configurar}
+    volumes:
+      - ./secrets:/run/secrets:ro
+    ports:
+      - "8087:8087"
+
+  frontend:
+    build: ./articulos-frontend
+    image: salud-total-erp-frontend:${APP_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8090:80"
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./monitoring:/etc/prometheus:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "9090:9090"
+
+volumes:
+  pgdata:
+  archivos:
+  uploads:

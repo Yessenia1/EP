@@ -1,0 +1,593 @@
+{
+  "info": {
+    "name": "E3 · Salud Total · ERP Articulos",
+    "description": "Pruebas funcionales de la API: autenticación, FEFO, ventas y reabastecimiento.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8085"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "id_orden",
+      "value": ""
+    },
+    {
+      "key": "lote_fefo",
+      "value": ""
+    },
+    {
+      "key": "lote_posterior",
+      "value": ""
+    },
+    {
+      "key": "lote_vencido",
+      "value": ""
+    },
+    {
+      "key": "id_proveedor",
+      "value": ""
+    },
+    {
+      "key": "cat_vencido",
+      "value": ""
+    },
+    {
+      "key": "ruc",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Health del backend",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Estado UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/actuator/health"
+      }
+    },
+    {
+      "name": "02 Login con credenciales inválidas",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Rechaza credenciales (401)', () => pm.response.to.have.status(401));",
+              "pm.test('Informa intentos restantes', () => pm.expect(pm.response.json().message).to.match(/intento|Credenciales/i));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"login\":\"admin-articulos\",\"password\":\"clave-incorrecta\"}"
+        },
+        "url": "{{base_url}}/api/auth/login"
+      }
+    },
+    {
+      "name": "03 Login correcto",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const t = pm.response.json().data.token;",
+              "pm.test('Devuelve JWT', () => pm.expect(t.split('.').length).to.eql(3));",
+              "pm.collectionVariables.set('token', t);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"login\":\"admin-articulos\",\"password\":\"admin123\"}"
+        },
+        "url": "{{base_url}}/api/auth/login"
+      }
+    },
+    {
+      "name": "04 Endpoint protegido sin token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Sin token no autoriza (401/403)', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reabastecimiento?idSucursal=1"
+      }
+    },
+    {
+      "name": "05 Lotes FEFO de Paracetamol en Juliaca",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const lotes = pm.response.json().data;",
+              "pm.test('Hay lotes vigentes', () => pm.expect(lotes.length).to.be.above(0));",
+              "pm.test('Ordenados por vencimiento', () => { for (let i = 1; i < lotes.length; i++) pm.expect(lotes[i-1].fechaVencimiento <= lotes[i].fechaVencimiento).to.be.true; });",
+              "pm.test('Ningún lote vencido', () => lotes.forEach(l => pm.expect(l.diasParaVencer).to.be.at.least(0)));",
+              "pm.test('ordenFefo empieza en 1', () => pm.expect(lotes[0].ordenFefo).to.eql(1));",
+              "pm.collectionVariables.set('lote_fefo', lotes[0].idProducto);",
+              "pm.collectionVariables.set('lote_posterior', lotes[lotes.length - 1].idProducto);",
+              "pm.test('Hay al menos dos lotes para probar FEFO', () => pm.expect(lotes.length).to.be.at.least(2));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/productos/catalogo/1/sucursal/1/fefo"
+      }
+    },
+    {
+      "name": "05b Lotes vencidos en Puno",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const v = pm.response.json().data;",
+              "pm.test('Hay un lote vencido de prueba', () => pm.expect(v.length).to.be.above(0));",
+              "pm.collectionVariables.set('lote_vencido', v[0].idProducto);",
+              "pm.collectionVariables.set('cat_vencido', v[0].idCatalogo);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/productos/sucursal/2/vencidos"
+      }
+    },
+    {
+      "name": "05c Abrir caja chica",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Caja abierta o ya existente', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 400, 409]));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nombre\":\"Caja pruebas\",\"idSucursal\":1,\"idPuntoVenta\":1,\"saldoInicial\":100}"
+        },
+        "url": "{{base_url}}/api/caja-chica/cajas"
+      }
+    },
+    {
+      "name": "05d Crear proveedor",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('ruc', '20' + Math.floor(100000000 + Math.random() * 899999999));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Proveedor creado (2xx)', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "pm.collectionVariables.set('id_proveedor', pm.response.json().data.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"tipoDocIdent\":\"6\",\"numDocIdent\":\"{{ruc}}\",\"razonSocial\":\"DROGUERIA SUR ANDINA SAC\",\"direccion\":\"Av. Circunvalacion 820, Juliaca\",\"plazoDias\":30,\"estado\":1}"
+        },
+        "url": "{{base_url}}/api/proveedores"
+      }
+    },
+    {
+      "name": "06 Venta saltándose el lote FEFO",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Rechaza (400)', () => pm.response.to.have.status(400));",
+              "pm.test('Mensaje FEFO', () => pm.expect(pm.response.json().message).to.include('Por FEFO debe venderse primero'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"tipoDoc\":\"03\",\"estado\":\"VIGENTE\",\"metodoPago\":\"EFECTIVO\",\"nombrePac\":\"CLIENTE VARIOS\",\"nroDni\":\"00000000\",\"tipoDni\":\"1\",\"detalles\":[{\"idCatalogo\":\"1\",\"idArticulo\":\"{{lote_posterior}}\",\"glosa\":\"PRODUCTO\",\"cantidad\":1,\"precioUnitario\":8.00,\"total\":8.00,\"unidadMedida\":\"UND\"}]}"
+        },
+        "url": "{{base_url}}/api/ventas"
+      }
+    },
+    {
+      "name": "07 Venta de un lote vencido",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Rechaza (400)', () => pm.response.to.have.status(400));",
+              "pm.test('Mensaje de vencimiento', () => pm.expect(pm.response.json().message).to.match(/venció el .* no puede venderse/));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"tipoDoc\":\"03\",\"estado\":\"VIGENTE\",\"metodoPago\":\"EFECTIVO\",\"nombrePac\":\"CLIENTE VARIOS\",\"nroDni\":\"00000000\",\"tipoDni\":\"1\",\"detalles\":[{\"idCatalogo\":\"{{cat_vencido}}\",\"idArticulo\":\"{{lote_vencido}}\",\"glosa\":\"PRODUCTO\",\"cantidad\":1,\"precioUnitario\":6.00,\"total\":6.00,\"unidadMedida\":\"UND\"}]}"
+        },
+        "url": "{{base_url}}/api/ventas"
+      }
+    },
+    {
+      "name": "08 Venta del lote que vence primero",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Venta creada (2xx)', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "pm.test('Numeración B001', () => pm.expect(pm.response.json().data.serie).to.eql('B001'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"tipoDoc\":\"03\",\"estado\":\"VIGENTE\",\"metodoPago\":\"EFECTIVO\",\"nombrePac\":\"CLIENTE VARIOS\",\"nroDni\":\"00000000\",\"tipoDni\":\"1\",\"detalles\":[{\"idCatalogo\":\"1\",\"idArticulo\":\"{{lote_fefo}}\",\"glosa\":\"PRODUCTO\",\"cantidad\":1,\"precioUnitario\":8.00,\"total\":8.00,\"unidadMedida\":\"UND\"}]}"
+        },
+        "url": "{{base_url}}/api/ventas"
+      }
+    },
+    {
+      "name": "09 Evaluar punto de reorden en Juliaca",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve lista', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/reabastecimiento/evaluar?idSucursal=1"
+      }
+    },
+    {
+      "name": "10 Segunda evaluación no duplica órdenes abiertas",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Cero órdenes nuevas', () => pm.expect(pm.response.json().data.length).to.eql(0));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/reabastecimiento/evaluar?idSucursal=1"
+      }
+    },
+    {
+      "name": "11 Listar órdenes pendientes de Juliaca",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const page = pm.response.json().data;",
+              "pm.test('Paginado (size <= 10)', () => pm.expect(page.size).to.be.at.most(10));",
+              "pm.test('Solo PENDIENTE', () => page.content.forEach(o => pm.expect(o.estado).to.eql('PENDIENTE')));",
+              "pm.test('Incluye nombre de producto', () => page.content.forEach(o => pm.expect(o.nombreProducto).to.be.a('string')));",
+              "if (page.content.length) pm.collectionVariables.set('id_orden', page.content[0].id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/reabastecimiento?idSucursal=1&estado=PENDIENTE&page=0&size=10"
+      }
+    },
+    {
+      "name": "12 Aprobar con cantidad inválida",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Validación (400)', () => pm.response.to.have.status(400));",
+              "pm.test('Mensaje del campo', () => pm.expect(pm.response.json().data.cantidadAprobada).to.include('mayor a cero'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cantidadAprobada\":-5}"
+        },
+        "url": "{{base_url}}/api/reabastecimiento/{{id_orden}}/aprobar"
+      }
+    },
+    {
+      "name": "13 Aprobar orden ajustando cantidad",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Queda APROBADA', () => pm.expect(pm.response.json().data.estado).to.eql('APROBADA'));",
+              "pm.test('Guarda la cantidad', () => pm.expect(pm.response.json().data.cantidadAprobada).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cantidadAprobada\":200}"
+        },
+        "url": "{{base_url}}/api/reabastecimiento/{{id_orden}}/aprobar"
+      }
+    },
+    {
+      "name": "14 No se puede rechazar una orden ya aprobada",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Conflicto (409)', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"motivo\":\"prueba\"}"
+        },
+        "url": "{{base_url}}/api/reabastecimiento/{{id_orden}}/rechazar"
+      }
+    },
+    {
+      "name": "15 Convertir en orden de compra",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Queda CONVERTIDA', () => pm.expect(pm.response.json().data.estado).to.eql('CONVERTIDA'));",
+              "pm.test('Referencia a la compra', () => pm.expect(pm.response.json().data.idCompra).to.be.a('number'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idProveedor\":{{id_proveedor}}}"
+        },
+        "url": "{{base_url}}/api/reabastecimiento/{{id_orden}}/convertir"
+      }
+    },
+    {
+      "name": "16 Resumen de reabastecimiento",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Tiene los cuatro indicadores', () => pm.expect(pm.response.json().data).to.have.all.keys('pendientes','aprobadas','convertidas','productosBajoMinimo'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/reabastecimiento/resumen?idSucursal=1"
+      }
+    }
+  ]
+}
